@@ -1,31 +1,44 @@
 <?php
-   define('DATA_DIR', __DIR__ . '/data/');
-   define('LOGO_IMG', null);
-   
-   session_start();
-   if (!isset($_SESSION['ok'])) { 
-	$_SESSION['ok'] = false;
-   }
-
+    define('DATA_DIR', __DIR__ . '/data/');
+    define('LOGO_IMG', null);
+    define('_TOKEN_', 'x-20');
+    
+    session_start();
+    $_token = isset($_REQUEST['_tk']) ? $_REQUEST['_tk'] : null;
+    $_script = isset($_REQUEST['i']) ? $_REQUEST['i'] : 'index';
+    $_script = filter_var($_script, FILTER_SANITIZE_STRING);
+    
+    // protect page with a token
+    if (isset($_token) && $_token === _TOKEN_) {
+        $_SESSION['auth'] = true;
+    }
+     
+    if (!isset($_SESSION['auth'])) { 
+        die();
+    }
+    
+    if (!isset($_SESSION['alreadyAnswered'])) { 
+        $_SESSION['alreadyAnswered'] = false;
+    }
+    
     // Save survey 
     if(isset($_REQUEST['surveyResult'])) { 
         header('Content-Type: application/json');
-        
         $data = isset($_REQUEST['surveyResult']) ? $_REQUEST['surveyResult'] : null;
-        $token = isset($_REQUEST['token']) ? $_REQUEST['token'] : null;
-        if (($_SESSION['ok'] == false) && $data && $token) { 
-             $data = json_decode($data, true);
-             $data['time'] = date('Y-m-d H:i:s');
-             $date = date('Ymd_H_i_s');
-             file_put_contents(DATA_DIR . $date . '-data-' . $token . '.php', '<?php return ' . var_export($data, true) . ';');
+        $uniqid = uniqid();
+        if (($_SESSION['alreadyAnswered'] == false) && $data) { 
+            $data = json_decode($data, true);
+            $data['time'] = date('Y-m-d H:i:s');
+            $date = date('Ymd_H_i_s');
+            file_put_contents(DATA_DIR . $date . '-data-' . $uniqid . '.json', json_encode($data));
             $success = true;
-            $_SESSION['ok'] = true;
+            $_SESSION['alreadyAnswered'] = true;
         } else { 
-             $success = false;
+            $success = false;
         }
         echo json_encode(array('success' => $success));
         die();
-}
+    }
 
 ?>
 <!DOCTYPE html>
@@ -43,12 +56,6 @@
             });
         </script>
         <style>
-		body {
-		    background-color: #fff;
-		}
-		.my-rating {
-		    font-size: 12px;
-		}		
     		#img  {
     		    width: 400px;
     		    top: 0px;
@@ -57,7 +64,11 @@
     		    margin-top:20px;
     		    border-radius:20px;
     		}
-    
+    		
+            .sv_main.sv_main .sv_row .sv_qstn:first-child:last-child {
+                padding: 0px;
+            }
+            
     		.sv_main.sv_main .sv-boolean__label.sv-boolean__label--disabled {
     		    color: rgba(64, 64, 64, 0.5);
     		    font-weight: normal;
@@ -67,15 +78,24 @@
     		    color: rgb(64, 64, 64);
     		    font-weight: bolder;
     		}
+            
+            .sv_q_radiogroup_control_label, .sv_main span { 
+                color:black !important;
+                cursor:pointer;
+            }
+            
+            div.checkbox { 
+                padding: 0px !important;
+                margin: 0px !important;
+            }
 	    </style>
     </head>
     <body>
         <?php if (LOGO_IMG) { echo '<img id="img" src="' . LOGO_IMG . '" />'; } ?>
         <div id="surveyElement" style="display:inline-block;width:100%;"></div>
-        <form name="frm" id="frm" action="collect.php" method="post">
+        <form name="frm" id="frm" action="index.php" method="post">
             <input type="hidden" name="surveyResult" id="surveyResult" value="" />
-	    <input type="hidden" name="token" id="token" value="<?php echo uniqid(); ?>" />
         </form>
-        <script type="text/javascript" src="./index.js"></script>
+        <script type="text/javascript" src="./<?php echo md5('salt#_' . $_script); ?>.js"></script>
     </body>
 </html>
