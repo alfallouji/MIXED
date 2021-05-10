@@ -1,7 +1,7 @@
 <?php
     define('DATA_DIR', __DIR__ . '/data/');
     define('LOGO_IMG', null);
-    define('_TOKEN_', null);
+    define('_TOKEN_', 'tbd');
     
     session_start();
     $_token = isset($_REQUEST['_tk']) ? $_REQUEST['_tk'] : null;
